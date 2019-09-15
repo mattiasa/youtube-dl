@@ -134,7 +134,7 @@ class SVTIE(SVTBaseIE):
 
 
 class SVTPlayBaseIE(SVTBaseIE):
-    _SVTPLAY_RE = r'root\s*\[\s*(["\'])_*svtplay\1\s*\]\s*=\s*(?P<json>{.+?})\s*;\s*\n'
+    _SVTPLAY_RE = r'root\s*\[\s*(["\'])_*svtplay_apollo\1\s*\]\s*=\s*(?P<json>{.+?})\s*;\s*\n'
 
 
 class SVTPlayIE(SVTPlayBaseIE):
@@ -280,25 +280,23 @@ class SVTSeriesIE(SVTPlayBaseIE):
         season_name = None
 
         entries = []
-        for season in root['relatedVideoContent']['relatedVideosAccordion']:
-            if not isinstance(season, dict):
+
+        for episode in [root[key] for key in root.keys() if key.startswith("Episode:")]:
+            if not isinstance(episode, dict):
                 continue
-            if season_slug:
-                if season.get('slug') != season_slug:
-                    continue
-                season_name = season.get('name')
-            videos = season.get('videos')
-            if not isinstance(videos, list):
+
+            try:
+                urls = root[episode['urls']['id']]
+            except KeyError:
                 continue
-            for video in videos:
-                content_url = video.get('contentUrl')
-                if not content_url or not isinstance(content_url, compat_str):
-                    continue
+
+            if urls.get('svtplay'):
+                content_url = urls['svtplay']
                 entries.append(
                     self.url_result(
                         urljoin(url, content_url),
                         ie=SVTPlayIE.ie_key(),
-                        video_title=video.get('title')
+                        video_title=episode.get('name')
                     ))
 
         metadata = root.get('metaData')
